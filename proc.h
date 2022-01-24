@@ -51,7 +51,26 @@ struct proc {
   char name[16];               // Process name (debugging)
   int threads;
   int stackTop;
-  int ticktock;                 //clock tick counter
+  int ticktock;                 //clock tick counterint queue;                  // Defines in which queue the process belongs
+  int queue;                    // Defines in which queue the process belongs
+
+  int rr_remaining_t; // Remaining time left for RR scheduling
+  int priority;       // Process priority, 1 being the highest, 6 lowest.
+
+  int creation_t;    // Time which this process was created (turn into EMBRYO)
+  int sleeping_t;    // Time spent being in SLEEPING state
+  int runnable_t;    // Time spent being in RUNNABLE state
+  int running_t;     // Time spent being in RUNNING state
+  int termination_t; // Time which this process was terminated (turn into ZOMBIE)
+};
+
+// Scheduling options
+enum schedPolicy
+{
+  DEFAULT = 0,
+  ROUND_ROBIN = 1,
+  PRIORITY = 2,
+  MULTILAYERED_QUEUE = 3,
 };
 
 // Process memory is laid out contiguously, low addresses first:
