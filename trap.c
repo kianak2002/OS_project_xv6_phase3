@@ -129,7 +129,7 @@ trap(struct trapframe *tf)
       yield();
       break;
 
-    case MULTILAYRED_QUEUE:
+    case MULTILAYERED_QUEUE:
       switch (myproc()->queue)
       {
       case 1: // default

@@ -7,6 +7,9 @@
 #include "proc.h"
 #include "spinlock.h"
 
+// An enum default value is always zero
+enum schedPolicy policy;
+
 extern int readCount;
 
 struct {
