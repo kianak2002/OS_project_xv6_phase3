@@ -105,8 +105,65 @@ trap(struct trapframe *tf)
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER && tick_counter() == QUANTUM)
-    yield();
+     tf->trapno == T_IRQ0+IRQ_TIMER){
+    switch (policy)
+    {
+    case DEFAULT:
+      yield();
+      break;
+
+    case ROUND_ROBIN:
+      if (myproc()->rr_remaining_t == 0)
+      {
+        // Reset remainin time back to quantum
+        myproc()->rr_remaining_t = QUANTUM;
+        yield();
+      }
+      else
+      {
+        myproc()->rr_remaining_t--;
+      }
+      break;
+
+    case PRIORITY:
+      yield();
+      break;
+
+    case MULTILAYRED_QUEUE:
+      switch (myproc()->queue)
+      {
+      case 1: // default
+      case 2: // priority scheduling
+      case 3: // multi layered priority scheduling
+        yield();
+        break;
+
+      case 4: // round robin scheduling
+        if (myproc()->rr_remaining_t == 0)
+        {
+          // Reset remainin time back to quantum
+          myproc()->rr_remaining_t = QUANTUM;
+          yield();
+        }
+        else
+        {
+          myproc()->rr_remaining_t--;
+        }
+        break;
+      default:
+        yield();
+        break;
+      }
+      break;
+    }
+  }
+  //  yield();
+
+  // Update each process sleeping, runnable, running time
+  if (tf->trapno == T_IRQ0 + IRQ_TIMER)
+  {
+    updateStateDurations();
+  }
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
