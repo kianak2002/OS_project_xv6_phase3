@@ -113,3 +113,13 @@ int sys_thread_create(void){
 int sys_thread_wait(void){
   return thread_wait();
 }
+
+
+int sys_setPriority(void)
+{
+  int newPriority;
+  if (argint(0, &newPriority) < 0)
+    return -1;
+  else
+    return setPriority(newPriority);
+}
