@@ -132,3 +132,12 @@ int sys_changePolicy(void)
   else
     return changePolicy(newPolicy);
 }
+
+int sys_getTurnAroundTime(void)
+{
+  int pid;
+  if (argint(0, &pid) < 0)
+    return -1;
+  else
+    return getTurnAroundTime(pid);
+}
