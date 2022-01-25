@@ -123,3 +123,12 @@ int sys_setPriority(void)
   else
     return setPriority(newPriority);
 }
+
+int sys_changePolicy(void)
+{
+  int newPolicy;
+  if (argint(0, &newPolicy) < 0)
+    return -1;
+  else
+    return changePolicy(newPolicy);
+}
