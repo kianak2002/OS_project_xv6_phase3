@@ -6,16 +6,12 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
-// An enum default value is always zero
-enum schedPolicy policy;
-
-extern int readCount;
-
+extern int counter;
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
+
 
 static struct proc *initproc;
 
@@ -96,9 +92,8 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->stackTop = -1; //initialize stackTop to -1 (illegal value)
-  p->threads = -1; //initialize threads to -1 (illegal value)
-  p->ticktock = 0; //initialize tickclock counter to 0
+  p->stackTop = -1;
+  p->threads = -1;
 
   release(&ptable.lock);
 
@@ -141,8 +136,6 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
-  //only one thread is executing for this process
-  p->threads = 1;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -151,6 +144,8 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
+  p->tf->esp = PGSIZE;
+  p->tf->eip = 0;
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -181,61 +176,65 @@ growproc(int n)
       release(&thread);
       return -1;
     }
-      
-  } else if(n < 0){
+  } 
+  else if(n < 0){
     if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0){
       release(&thread);
       return -1;
     }
   }
+
+
   curproc->sz = sz;
   acquire(&ptable.lock);
-  // we should update sz in all threads due to existence of clone system call
   struct proc *p;
   int numberOfChildren;
-  // check if it is a child or parent
-  if(curproc->threads == -1) //child
+
+
+  if(curproc->threads == -1) 
   {
-    // update parents sz
-    curproc->parent ->sz = curproc->sz;
-    // - 2 is because of updating parent along with one child
+    curproc->parent->sz = curproc->sz;
     numberOfChildren = curproc->parent->threads - 2;
-    if (numberOfChildren <= 0) {
+    if(numberOfChildren <= 0){
       release(&ptable.lock);
       release(&thread);
       switchuvm(curproc);
       return 0;
     }
-  
+
     else
-      for (p = ptable.proc; p < &ptable.proc[NPROC];p++){
-      if (p!=curproc && p->parent == curproc->parent && p->threads == -1){
+      for(p = ptable.proc; p < &ptable.proc[NPROC];p++){
+      if(p!=curproc && p->parent == curproc->parent && p->threads == -1){
         p->sz = curproc->sz;
         numberOfChildren--;
       }
     }
   }
-  else{ // is not a child
+  else{ 
     numberOfChildren = curproc->threads - 1;
-    if (numberOfChildren <= 0){
+    if(numberOfChildren <= 0){
       release(&ptable.lock);
       release(&thread);
       switchuvm(curproc);
       return 0;
-   }
+    }
     else
       for(p = ptable.proc; p < &ptable.proc[NPROC];p++){
         if(p->parent == curproc && p->threads == -1){
           p->sz = curproc->sz;
           numberOfChildren--;
+
         }
       }
   }
+
   release(&ptable.lock);
   release(&thread);
   switchuvm(curproc);
   return 0;
 }
+
+
 
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
@@ -260,12 +259,12 @@ fork(void)
     return -1;
   }
   np->sz = curproc->sz;
-  //child has the same stack top as parent in fork
   np->stackTop = curproc->stackTop;
-  // there is only one thread for the child because in fork, fork creates a new pgdir for the ...
   np->threads = 1;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  
+
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -316,8 +315,8 @@ exit(void)
 
   acquire(&ptable.lock);
 
-  //for threads
-  if(curproc->threads == -1){
+
+  if(curproc->threads == -1){ 
     curproc->parent->threads--;
   }
 
@@ -339,17 +338,17 @@ exit(void)
   panic("zombie exit");
 }
 
-//check kon k fazaye adderss thread farzand ba pedar yekie. age 0 bargaedone yani page directory ro nabayd free koni chon yek thread hast k ba mn fazaye addres yeki dare..
 int
 check_pgdir_share(struct proc *process)
 {
   struct proc *p;
   for(p = ptable.proc; p < &ptable.proc[NPROC];p++){
     if(p != process && p->pgdir == process->pgdir)
-    return 0;
+      return 0;
   }
   return 1;
 }
+
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
@@ -367,24 +366,27 @@ wait(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
+      if(p->threads == -1)
+        continue;     
       havekids = 1;
+
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-
+        
         if(check_pgdir_share(p))
           freevm(p->pgdir);
+
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        //reset stackTop and pgdir if it is the parent
         p->stackTop = -1;
         p->pgdir = 0;
-        p->threads = -1;
+        p->threads = -1; 
         release(&ptable.lock);
         return pid;
       }
@@ -400,6 +402,34 @@ wait(void)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -623,64 +653,41 @@ procdump(void)
   }
 }
 
-int getHelloWorld (void){
-  cprintf("Heloooooo !!!\n");
+int 
+getProcCount(void){
+  int count = 0;
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if (p->state != UNUSED) 
+    count++;
+  }
+  cprintf("Proc Count = %d\n", count);
   return 0;
 }
 
-int getProcCount(void){
-
-  struct proc *p;
-  int procCounter = 0;
-
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-     if(p->state != UNUSED) procCounter++;
-  }
-
-  cprintf("Number of Processes : %d\n",procCounter);
-  return procCounter;
-}
-
-
-
-int
-thread_create (void *stack)
-{
-  int pid;
-  
+int 
+clone(void *stack){
+ int pid;
   struct proc *curproc = myproc();
-  
   struct proc *np;
-  // allocate process
-  if ( (np = allocproc()) == 0)
+  if((np = allocproc()) == 0)
     return -1;
 
-  // increase threads number for parent, default value of threads for child is -1
-    curproc->threads++;
-
-    
-    np->stackTop = (int)((char*)stack + PGSIZE);
-  // might be at the middle of changing address space in another thread
+  curproc->threads++;
+  np->stackTop = (int)((char*)stack + PGSIZE);
   acquire(&ptable.lock);
   np->pgdir = curproc->pgdir;
   np->sz = curproc->sz;
-  release (&ptable.lock);
+  release(&ptable.lock);
 
   int bytesOnStack = curproc->stackTop - curproc->tf->esp;
   np->tf->esp = np->stackTop - bytesOnStack;
-  memmove((void*)np->tf->esp, (void*) curproc->tf->esp, bytesOnStack);
+  memmove((void*)np->tf->esp, (void*)curproc->tf->esp, bytesOnStack);
 
   np->parent = curproc;
-
-  
   *np->tf = *curproc->tf;
-
-  
   np->tf->eax = 0;
-
-  
   np->tf->esp = np->stackTop - bytesOnStack;
-  
   np->tf->ebp = np->stackTop - (curproc->stackTop - curproc->tf->ebp);
 
   int i;
@@ -688,42 +695,35 @@ thread_create (void *stack)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
-
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
-
   pid = np->pid;
-
   acquire(&ptable.lock);
-
   np->state = RUNNABLE;
-
-  release (&ptable.lock);
-
+  release(&ptable.lock);
   return pid;
 }
 
-int
-thread_wait(void)
-{
-  struct proc *p;
+int 
+join(void){
+   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
   
-  acquire(&ptable. lock);
+  acquire(&ptable.lock);
   for(;;){
     havekids = 0;
-    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->parent != curproc)
         continue;
-      if (p->threads != -1) // remember join only waits for child threads not child processes
-        continue;
+      if(p->threads != -1) 
+        continue;  
       havekids = 1;
-      if (p->state == ZOMBIE){
+      if(p->state == ZOMBIE){
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-        
-        if (check_pgdir_share(p))
+
+        if(check_pgdir_share(p))
           freevm(p->pgdir);
 
         p->pid = 0;
@@ -734,171 +734,32 @@ thread_wait(void)
         p->stackTop = 0;
         p->pgdir = 0;
         p->threads = -1;
-
         release(&ptable.lock);
         return pid;
       }
     }
-
-    if (!havekids || curproc->killed){
+    if(!havekids || curproc->killed){
       release(&ptable.lock);
       return -1;
     }
-
-    sleep(curproc, &ptable.lock);
+    sleep(curproc, &ptable.lock);  
   }
 }
 
-int tick_counter() {
-  struct proc *p;
-  p = myproc();
-  int time;
-  acquire(&ptable.lock);
-  time = ++p->ticktock;
-  release(&ptable.lock);
-  return time;
-}
-
-
-int setPriority(int newPriority)
+int 
+lock(void)
 {
-  struct proc *p = myproc();
-  if (newPriority > 0 && newPriority < 7)
-  {
-    p->priority = newPriority;
-    return 0;
-  }
-  else
-    return -1;
+  return 0;
 }
 
-int changePolicy(int newPolicy)
+int
+unlock(void)
 {
-  if (newPolicy >= 0 && newPolicy < 5)
-  {
-    policy = newPolicy;
-    return 0;
-  }
-  else
-    return -1;
+  return 0;
 }
 
-int getTurnAroundTime(int pid)
-{
-  // if ((&ptable.proc[pid])->state == ZOMBIE)
-  return (&ptable.proc[pid])->sleeping_t + (&ptable.proc[pid])->runnable_t + (&ptable.proc[pid])->running_t;
-  // else
-  //   return -1;
-}
-
-int getWaitingTime(int pid)
-{
-  return (&ptable.proc[pid])->sleeping_t + (&ptable.proc[pid])->runnable_t;
-}
-
-int getCBT(int pid)
-{
-  return (&ptable.proc[pid])->running_t;
-}
-
-// it is almost the same as wait but it gets process differents time such as turnAroundTime and waitingTime and CBT
-int customWait(int *procTimes)
-{
-  struct proc *p;
-  int havekids, pid;
-  struct proc *curproc = myproc();
-
-  acquire(&ptable.lock);
-  for (;;)
-  {
-    // Scan through table looking for exited children.
-    havekids = 0;
-    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    {
-      if (p->parent != curproc)
-        continue;
-      havekids = 1;
-      if (p->state == ZOMBIE)
-      {
-        // Found one.
-        // store process times for further calculations
-        int turnAroundTime = getTurnAroundTime(p->pid);
-        int waitingTime = getWaitingTime(p->pid);
-        int cbt = getCBT(p->pid);
-
-        procTimes[0] = turnAroundTime;
-        procTimes[1] = waitingTime;
-        procTimes[2] = cbt;
-        procTimes[3] = p->priority;
-
-        pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
-        freevm(p->pgdir);
-        p->pid = 0;
-        p->parent = 0;
-        p->name[0] = 0;
-        p->killed = 0;
-        p->state = UNUSED;
-
-        // // Reset time spent in each state, for the next call.
-        // p->sleeping_t = 0;
-        // p->runnable_t = 0;
-        // p->running_t = 0;
-        release(&ptable.lock);
-        return pid;
-      }
-    }
-
-    // No point waiting if we don't have any children.
-    if (!havekids || curproc->killed)
-    {
-      release(&ptable.lock);
-      return -1;
-    }
-
-    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(curproc, &ptable.lock); //DOC: wait-sleep
-  }
-}
-
-int setQueue(int queueNumber)
-{
-  struct proc *curproc = myproc();
-  if (queueNumber > 4 || queueNumber < 1)
-  {
-    return -1;
-  }
-  else
-  {
-    curproc->queue = queueNumber;
-    return 0;
-  }
-}
-    
-
-void updateStateDurations()
-{
-  struct proc *p;
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-  {
-    switch (p->state)
-    {
-    case SLEEPING:
-      p->sleeping_t++;
-      break;
-
-    case RUNNABLE:
-      p->runnable_t++;
-      break;
-
-    case RUNNING:
-      p->running_t++;
-      break;
-
-    default:
-      break;
-    }
-  }
-}
-
+// int
+// getReadCount(void){
+//   cprintf("%d", counter);
+//   return 0;
+// }

@@ -90,72 +90,44 @@ sys_uptime(void)
   return xticks;
 }
 
-int sys_getProcCount(void)
+int
+sys_getProcCount(void)
 {
   return getProcCount();
 }
 
 extern int readCount;
-int sys_getReadCount(void)
-{
-  cprintf("%d",readCount);
+int
+sys_getReadCount(void){
+  cprintf("%d", readCount);
   return readCount;
 }
 
-int sys_thread_create(void){
-  int stackpointer = 0;
-  if (argint(0, &stackpointer) < 0){
-    return -1;
-  }
-  return thread_create((void *) stackpointer);
-}
-
-int sys_thread_wait(void){
-  return thread_wait();
-}
-
-
-int sys_setPriority(void)
+int
+sys_clone(void)
 {
-  int newPriority;
-  if (argint(0, &newPriority) < 0)
+  int stackptr = 0;
+  if(argint(0, &stackptr) < 0)
     return -1;
-  else
-    return setPriority(newPriority);
+
+  return clone((void*) stackptr);
 }
 
-int sys_changePolicy(void)
+int
+sys_join(void)
 {
-  int newPolicy;
-  if (argint(0, &newPolicy) < 0)
-    return -1;
-  else
-    return changePolicy(newPolicy);
+  return join();
 }
 
-int sys_getTurnAroundTime(void)
+int
+sys_lock(void)
 {
-  int pid;
-  if (argint(0, &pid) < 0)
-    return -1;
-  else
-    return getTurnAroundTime(pid);
+  return lock();
 }
 
-int sys_getWaitingTime(void)
+int 
+sys_unlock(void)
 {
-  int pid;
-  if (argint(0, &pid) < 0)
-    return -1;
-  else
-    return getWaitingTime(pid);
+  return unlock();
 }
 
-int sys_getCBT(void)
-{
-  int pid;
-  if (argint(0, &pid) < 0)
-    return -1;
-  else
-    return getCBT(pid);
-}
