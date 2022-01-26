@@ -109,7 +109,6 @@ sys_clone(void)
   int stackptr = 0;
   if(argint(0, &stackptr) < 0)
     return -1;
-
   return clone((void*) stackptr);
 }
 
@@ -119,15 +118,15 @@ sys_join(void)
   return join();
 }
 
-int
-sys_lock(void)
-{
-  return lock();
-}
+// int
+// sys_lock(void)
+// {
+//   return lock();
+// }
 
-int 
-sys_unlock(void)
-{
-  return unlock();
-}
+// int 
+// sys_unlock(void)
+// {
+//   return unlock();
+// }
 

@@ -144,7 +144,7 @@ tags: $(OBJS) entryother.S _init
 vectors.S: vectors.pl
 	./vectors.pl > vectors.S
 
-ULIB = ulib.o usys.o printf.o umalloc.o
+ULIB = ulib.o usys.o printf.o umalloc.o thread_create.o
 
 _%: %.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^
@@ -186,8 +186,8 @@ UPROGS=\
 	_getReadCountTest\
 	_threads\
 	_threadsTest\
-	_threadsTest2\
-	_threadsTest3\
+	_test_threads\
+	_threads_test\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

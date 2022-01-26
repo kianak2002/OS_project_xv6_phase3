@@ -107,8 +107,8 @@ extern int sys_getProcCount(void);
 extern int sys_getReadCount(void);
 extern int sys_clone(void);
 extern int sys_join(void);
-extern int sys_lock(void);
-extern int sys_unlock(void);
+// extern int sys_lock(void);
+// extern int sys_unlock(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -136,8 +136,8 @@ static int (*syscalls[])(void) = {
 [SYS_getReadCount]  sys_getReadCount,
 [SYS_clone]   sys_clone,
 [SYS_join]    sys_join,
-[SYS_lock]    sys_lock,
-[SYS_unlock]  sys_unlock,
+// [SYS_lock]    sys_lock,
+// [SYS_unlock]  sys_unlock,
 };
 
 void

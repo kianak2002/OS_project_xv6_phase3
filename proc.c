@@ -12,9 +12,7 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-
 static struct proc *initproc;
-
 struct spinlock thread;
 
 int nextpid = 1;
@@ -92,7 +90,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->stackTop = -1;
+  p->stackTop = -1; 
   p->threads = -1;
 
   release(&ptable.lock);
@@ -136,6 +134,7 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
+  p->threads = 1;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -144,8 +143,6 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-  p->tf->esp = PGSIZE;
-  p->tf->eip = 0;
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -160,6 +157,7 @@ userinit(void)
 
   release(&ptable.lock);
 }
+
 
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
@@ -181,18 +179,15 @@ growproc(int n)
     if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0){
       release(&thread);
       return -1;
-    }
+    }   
   }
-
 
   curproc->sz = sz;
   acquire(&ptable.lock);
   struct proc *p;
   int numberOfChildren;
 
-
-  if(curproc->threads == -1) 
-  {
+  if(curproc->threads == -1) {
     curproc->parent->sz = curproc->sz;
     numberOfChildren = curproc->parent->threads - 2;
     if(numberOfChildren <= 0){
@@ -212,6 +207,7 @@ growproc(int n)
   }
   else{ 
     numberOfChildren = curproc->threads - 1;
+
     if(numberOfChildren <= 0){
       release(&ptable.lock);
       release(&thread);
@@ -233,8 +229,6 @@ growproc(int n)
   switchuvm(curproc);
   return 0;
 }
-
-
 
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
@@ -258,13 +252,12 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+
   np->sz = curproc->sz;
+  np->parent = curproc;
   np->stackTop = curproc->stackTop;
   np->threads = 1;
-  np->parent = curproc;
   *np->tf = *curproc->tf;
-  
-
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -315,7 +308,6 @@ exit(void)
 
   acquire(&ptable.lock);
 
-
   if(curproc->threads == -1){ 
     curproc->parent->threads--;
   }
@@ -345,10 +337,10 @@ check_pgdir_share(struct proc *process)
   for(p = ptable.proc; p < &ptable.proc[NPROC];p++){
     if(p != process && p->pgdir == process->pgdir)
       return 0;
+
   }
   return 1;
 }
-
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
@@ -367,9 +359,8 @@ wait(void)
       if(p->parent != curproc)
         continue;
       if(p->threads == -1)
-        continue;     
+        continue;          
       havekids = 1;
-
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
@@ -386,7 +377,32 @@ wait(void)
         p->state = UNUSED;
         p->stackTop = -1;
         p->pgdir = 0;
-        p->threads = -1; 
+        p->threads = -1;
+
+
+        if(p->threads == 1){
+          freevm(p->pgdir);
+          p->pid = 0;
+          p->parent = 0;
+          p->name[0] = 0;
+          p->killed = 0;
+          p->state = UNUSED;
+          p->stackTop = -1;
+          p->pgdir = 0;
+          p->threads = -1;
+        }
+        else{
+          p->pid = 0;
+          p->parent = 0;
+          p->name[0] = 0;
+          p->killed = 0;
+          p->state = UNUSED;
+          p->stackTop = -1;
+          p->pgdir = 0;
+          p->threads = -1;
+        }
+
+
         release(&ptable.lock);
         return pid;
       }
@@ -402,34 +418,6 @@ wait(void)
     sleep(curproc, &ptable.lock);  //DOC: wait-sleep
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
@@ -665,9 +653,18 @@ getProcCount(void){
   return 0;
 }
 
-int 
-clone(void *stack){
- int pid;
+// int
+// getReadCount(void){
+//   cprintf("%d", counter);
+//   return 0;
+// }
+
+
+
+int
+clone(void *stack)
+{
+  int pid;
   struct proc *curproc = myproc();
   struct proc *np;
   if((np = allocproc()) == 0)
@@ -703,9 +700,11 @@ clone(void *stack){
   return pid;
 }
 
+
 int 
-join(void){
-   struct proc *p;
+join(void)
+{
+  struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
   
@@ -742,24 +741,18 @@ join(void){
       release(&ptable.lock);
       return -1;
     }
-    sleep(curproc, &ptable.lock);  
+    sleep(curproc, &ptable.lock); 
   }
 }
 
-int 
-lock(void)
-{
-  return 0;
-}
-
-int
-unlock(void)
-{
-  return 0;
-}
+// int 
+// lock(void)
+// {
+//   return 0;
+// }
 
 // int
-// getReadCount(void){
-//   cprintf("%d", counter);
+// unlock(void)
+// {
 //   return 0;
 // }

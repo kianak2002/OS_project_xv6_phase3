@@ -27,8 +27,6 @@ int getProcCount(void);
 int getReadCount(void);
 int clone(void*);
 int join(void);
-int lock(void); 
-int unlock(void);
 
 // ulib.c
 int stat(const char*, struct stat*);
@@ -43,4 +41,4 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
-int thread_create(void (*fn) (void *), void *arg);
+int thread_create(void (*fn)(void*), void *arg);

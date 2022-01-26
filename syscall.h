@@ -24,5 +24,5 @@
 #define SYS_getReadCount 23
 #define SYS_clone 24
 #define SYS_join 25
-#define SYS_lock 26
-#define SYS_unlock 27
+// #define SYS_lock 26
+// #define SYS_unlock 27

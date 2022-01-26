@@ -124,8 +124,6 @@ int             getProcCount(void);
 int             getReadCount(void);
 int             clone(void*);
 int             join(void);
-int             lock(void); 
-int             unlock(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
