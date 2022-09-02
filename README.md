@@ -1,6 +1,6 @@
 ### OS_project_xv6
 Implementing different scheduling policies in XV6 operating system.
-This is a course project for the operating systems course instructed by https://www3.cs.stonybrook.edu/~sjavadi/ 
+This is a course project for the operating systems course instructed by [Dr.Seyed Ahmad Javadi] (https://www3.cs.stonybrook.edu/~sjavadi/)
 
  With the new operating system of XV6, I implemented some scheduling policies, such as Round-Robin, non-preemptive priority scheduling,
  preemptive, and dynamic multi-layered queued scheduling.
